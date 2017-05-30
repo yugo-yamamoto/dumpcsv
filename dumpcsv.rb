@@ -24,14 +24,14 @@ results.each(:cache_rows => false){|row|
   values =  row.values
   values.map!{|value|
 		if value.class == String
-      value.strip!
-      value.gsub(/(\r\n|\r|\n|\f)/,"\u2003") #replace newline to emsp
-    elsif value.class == Time
-      value.strftime("%Y/%m/%d %H:%M:%S") #format localtime 
-    else
-      value.to_s
-    end
-  }.map!{|value|
+			value.strip!
+			value.gsub(/(\r\n|\r|\n|\f)/,"\u2003") #replace newline to emsp
+		elsif value.class == Time
+			value.strftime("%Y/%m/%d %H:%M:%S") #format localtime
+		else
+			value.to_s
+		end
+	}.map!{|value|
     '"' + value.gsub('"','""') + '"'
   }
 	print(values.join(",") + "\r\n")
