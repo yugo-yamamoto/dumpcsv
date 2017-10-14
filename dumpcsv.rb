@@ -2,39 +2,59 @@
 # frozen_string_literal: true
 
 require 'mysql2'
+require 'optparse'
+params = ARGV.getopts('d:h:u:p:s:')
 
-raise('usage ./dumpcsv.rb [db name] [table name]') if ARGV.length != 2
+database_name = params['d']
 
-table_name = ARGV[1]
-database_name = ARGV[0]
+host      = params['h'] || 'localhost'
+user_name = params['u'] || 'root'
+pass_word = params['p'] || ''
+
+if database_name.nil?
+  print 'dumpcsv.rb -d [databasename] '
+  print ' -u [username] -p [password] -h [host]'
+  print ' -s SQL string or STDIN' + "\n"
+  puts 'default username:root password:No host:localhost'
+  exit
+end
+
+query = params['s']
+query = STDIN.read if query.nil?
+
+if query.nil?
+  puts 'query string required.'
+  puts 'please fill sql -s param or STDIN'
+  exit
+end
 
 # connection default : localhostroot nopassword
 client = Mysql2::Client.new(
   database: database_name,
-  host:     ENV.fetch('RAILS_DATABASE_HOST','localhost'),
-  username: ENV.fetch('RAILS_DATABASE_USERNAME', 'root'),
-  password: ENV.fetch('RAILS_DATABASE_PASSWORD', '')
+  host:     host,
+  username: user_name,
+  password: pass_word
 )
 
-query = "select * from #{table_name}"
 results = client.query(query)
 
 # puts field names with BOM
-print("\uFEFF" + results.fields{|e|"\"#{e}\""}.join(",") + "\r\n") 
+print("\uFEFF" + results.fields { |e| "\"#{e}\"" }.join(',') + "\r\n")
 
 results.each(cache_rows: false) do |row|
   values =  row.values
-  values.map! { |value|
-  if value.class == String
-    value.strip!
-    value.gsub(/(\r\n|\r|\n|\f)/, "\u2003") # replace newline to emsp
-  elsif value.class == Time
-    value.strftime('%Y/%m/%d %H:%M:%S') # format localtime
-  else
-    value.to_s
+  values.map! do |value|
+    if value.class == String
+      value.strip!
+      value.gsub(/(\r\n|\r|\n|\f)/, "\u2003") # replace newline to emsp
+    elsif value.class == Time
+      value.strftime('%Y/%m/%d %H:%M:%S') # format localtime
+    else
+      value.to_s
+    end
   end
-  }.map! { |value|
-    '"' + value.gsub('"','""') + '"'
-  }
-  print(values.join(",") + "\r\n")
+  values.map! do |value|
+    '"' + value.gsub('"', '""') + '"'
+  end
+  print(values.join(',') + "\r\n")
 end
